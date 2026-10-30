@@ -9,6 +9,12 @@
     "url": "https://github.com/recomention/mcp",
     "source": "github"
   },
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://mcp.recomention.com/mcp"
+    }
+  ],
   "packages": [
     {
       "registryType": "npm",

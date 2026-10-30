@@ -25,7 +25,8 @@ test("the registry entry points at this npm package over stdio", () => {
   assert.equal(entry.registryType, "npm");
   assert.equal(entry.identifier, pkg.name);
   assert.deepEqual(entry.transport, { type: "stdio" });
-  assert.equal(serverJson.remotes, undefined, "there is no hosted MCP endpoint; do not list one");
+  // The hosted server signs in with OAuth, so the remote takes no headers or API key.
+  assert.deepEqual(serverJson.remotes, [{ type: "streamable-http", url: "https://mcp.recomention.com/mcp" }]);
 });
 
 test("server.json declares exactly the env the server reads, with every key secret and optional", () => {
