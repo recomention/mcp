@@ -1,0 +1,63 @@
+{
+  "name": "@recomention/mcp",
+  "version": "0.1.0",
+  "description": "MCP server for recomention: ask whether AI engines recommend a product, from Claude Code, Cursor or Codex.",
+  "type": "module",
+  "license": "MIT",
+  "mcpName": "io.github.recomention/mcp",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "ai-visibility",
+    "llm",
+    "claude-code",
+    "cursor",
+    "codex"
+  ],
+  "homepage": "https://www.recomention.com/developers",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/recomention/mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/recomention/mcp/issues",
+    "email": "support@recomention.com"
+  },
+  "bin": {
+    "recomention-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "!dist/**/*.test.js",
+    "!dist/**/*.map",
+    "skills",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "start": "tsx src/index.ts",
+    "clean": "node scripts/clean-dist.mjs",
+    "build": "node scripts/clean-dist.mjs && tsc -p tsconfig.build.json",
+    "prepack": "node scripts/clean-dist.mjs && tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test src/*.test.ts",
+    "smoke": "tsx scripts/smoke.ts",
+    "smoke:pack": "tsx scripts/pack-smoke.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "tsx": "^4.23.12",
+    "typescript": "^5"
+  }
+}

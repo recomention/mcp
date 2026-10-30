@@ -1,0 +1,82 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.recomention/mcp",
+  "title": "recomention",
+  "description": "Check whether AI engines recommend a product: public AI rankings and recomention reports.",
+  "version": "0.1.0",
+  "websiteUrl": "https://www.recomention.com/developers",
+  "repository": {
+    "url": "https://github.com/recomention/mcp",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "@recomention/mcp",
+      "version": "0.1.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "RECOMENTION_API_KEY",
+          "description": "API key from your recomention account (Developers). Needed for reports; public rankings and suggested questions work without it.",
+          "isRequired": false,
+          "isSecret": true,
+          "format": "string"
+        },
+        {
+          "name": "RECOMENTION_BASE_URL",
+          "description": "API origin. Must be https:// (http:// only for localhost).",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "string",
+          "default": "https://api.recomention.com"
+        },
+        {
+          "name": "OPENAI_API_KEY",
+          "description": "Optional. Your own OpenAI key, used only for reports started with funding \"byok\" (needs an active Agent plan).",
+          "isRequired": false,
+          "isSecret": true,
+          "format": "string"
+        },
+        {
+          "name": "ANTHROPIC_API_KEY",
+          "description": "Optional. Your own Anthropic key, used only for reports started with funding \"byok\" (needs an active Agent plan).",
+          "isRequired": false,
+          "isSecret": true,
+          "format": "string"
+        },
+        {
+          "name": "PERPLEXITY_API_KEY",
+          "description": "Optional. Your own Perplexity key, used only for reports started with funding \"byok\" (needs an active Agent plan).",
+          "isRequired": false,
+          "isSecret": true,
+          "format": "string"
+        },
+        {
+          "name": "GEMINI_API_KEY",
+          "description": "Optional. Your own Gemini key, used only for reports started with funding \"byok\" (needs an active Agent plan).",
+          "isRequired": false,
+          "isSecret": true,
+          "format": "string"
+        },
+        {
+          "name": "XAI_API_KEY",
+          "description": "Optional. Your own xAI (Grok) key, used only for reports started with funding \"byok\" (needs an active Agent plan).",
+          "isRequired": false,
+          "isSecret": true,
+          "format": "string"
+        },
+        {
+          "name": "DATAFORSEO_API_KEY",
+          "description": "Optional. DataForSEO login:password for Google AI Overview, used only for reports started with funding \"byok\" (needs an active Agent plan).",
+          "isRequired": false,
+          "isSecret": true,
+          "format": "string"
+        }
+      ]
+    }
+  ]
+}
