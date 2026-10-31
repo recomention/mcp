@@ -117,3 +117,27 @@ test("the default base is the API host; an old www base still reaches the deprec
     assert.equal(`${apiV1Root(base)}/rankings`, expected);
   }
 });
+
+test("a report fits the agent's context: per-question counts by default, one question's answers on request", async () => {
+  const answer = (engine: string, mentioned: boolean | null, extra: Record<string, unknown> = {}) => ({
+    engine, run: 1, failed: false, noAnswer: null, mentioned, brands: [{ name: "Rival", rank: 1 }], citations: [{ url: "https://example.com/a" }], answer: "word ".repeat(2000), ...extra,
+  });
+  const questions = Array.from({ length: 25 }, (_, i) => ({ order: i + 1, text: `Q${i + 1}?`, intent: "best", stage: "discover", answers: [answer("GEMINI", true), answer("CLAUDE", false), answer("OPENAI", null, { failed: true })] }));
+  const report = { report: { slug: "abcdefgh1234", simulated: false, overallScore: 68, enginesSkipped: [], questions } };
+  const { client } = await connect({}, () => Response.json(report));
+  const summary = text(await client.callTool({ name: "recomention_report_get", arguments: { slug: "abcdefgh1234" } }));
+  assert.ok(summary.length < 30_000, `report_get returned ${summary.length} chars`);
+  assert.match(summary, /"1 of 2 usable answers"/);
+  assert.doesNotMatch(summary, /word word/);
+  const one = JSON.parse(text(await client.callTool({ name: "recomention_report_get", arguments: { slug: "abcdefgh1234", question: 2 } })));
+  assert.equal(one.report.question.order, 2);
+  assert.equal(one.report.question.answers.length, 3);
+});
+
+test("report_get accepts question 0, the first question's order in real reports", async () => {
+  const report = { report: { slug: "abcdefgh1234", questions: [0, 1].map((order) => ({ order, text: `Q${order}`, answers: [] })) } };
+  const { client } = await connect({}, () => Response.json(report));
+  const first = await client.callTool({ name: "recomention_report_get", arguments: { slug: "abcdefgh1234", question: 0 } });
+  assert.equal(first.isError, undefined, text(first));
+  assert.equal(JSON.parse(text(first)).report.question.order, 0);
+});

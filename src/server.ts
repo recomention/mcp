@@ -3,6 +3,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { ApiError, PROVIDERS, providerKeysFromEnv, type Api } from "./api.js";
 import { suggestPrompts } from "./suggest.js";
+import { compactReport } from "./report.js";
 
 export const SERVER_NAME = "recomention";
 /**
@@ -129,12 +130,13 @@ export function createServer(api: Api, env: Record<string, string | undefined> =
     {
       title: "Get a report",
       description:
-        "A report as JSON: the overall score, each engine's runs mentioned of runs total, competitors named instead, cited sources, the fix list and every question with every answer. " +
+        "A report as JSON: the overall score, each engine's runs mentioned of runs total, competitors named instead, cited sources, the fix list and, per question, how many usable answers named the product. " +
+        "Answer texts are left out to fit your context: pass question (its order, from 0) to read that question's answers and citations. " +
         "Engines in enginesSkipped did not run; never describe them as not mentioning the product. simulated: true means test data. Free.",
-      inputSchema: { slug },
+      inputSchema: { slug, question: z.number().int().min(0).max(200).optional().describe("A question's order number, to read its answers.") },
       annotations: { readOnlyHint: true, openWorldHint: true },
     },
-    ({ slug }) => run(() => api.report(slug)),
+    ({ slug, question }) => run(async () => compactReport((await api.report(slug)) as never, question)),
   );
 
   server.registerTool(
