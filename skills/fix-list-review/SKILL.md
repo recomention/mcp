@@ -18,8 +18,9 @@ Reads a finished report with the `recomention_*` MCP tools. Costs nothing: it on
    suggests it (point at the evidence: a competitor's share of answers, a cited source the product is
    missing from, a question where it never appears), and the effort.
 4. **Ground it in the answers.** For the two or three questions where the product is absent most
-   often, quote one short excerpt of an engine answer and the products it named instead. Use
-   `questions[].answers[]`; skip answers with `failed: true`.
+   often, quote one short excerpt of an engine answer and the products it named instead. Call
+   `recomention_report_get` again with `question` set to that question's number (1 is the first) for
+   its answers; skip answers with `failed: true`.
 5. **Separate what the user controls from what they don't.** Their own site and docs: concrete edits
    they can make now (if you are in the product's repository, offer to draft them). Third-party pages
    (`sources` the engines cite): who to contact and what an honest inclusion request looks like.

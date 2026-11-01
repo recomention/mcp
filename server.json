@@ -3,7 +3,7 @@
   "name": "io.github.recomention/mcp",
   "title": "recomention",
   "description": "Check whether AI engines recommend a product: public AI rankings and recomention reports.",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "websiteUrl": "https://www.recomention.com/developers",
   "repository": {
     "url": "https://github.com/recomention/mcp",
@@ -20,7 +20,7 @@
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "@recomention/mcp",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "transport": {
         "type": "stdio"
       },

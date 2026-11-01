@@ -122,7 +122,8 @@ test("a report fits the agent's context: per-question counts by default, one que
   const answer = (engine: string, mentioned: boolean | null, extra: Record<string, unknown> = {}) => ({
     engine, run: 1, failed: false, noAnswer: null, mentioned, brands: [{ name: "Rival", rank: 1 }], citations: [{ url: "https://example.com/a" }], answer: "word ".repeat(2000), ...extra,
   });
-  const questions = Array.from({ length: 25 }, (_, i) => ({ order: i + 1, text: `Q${i + 1}?`, intent: "best", stage: "discover", answers: [answer("GEMINI", true), answer("CLAUDE", false), answer("OPENAI", null, { failed: true })] }));
+  // Real reports store order from 0.
+  const questions = Array.from({ length: 25 }, (_, i) => ({ order: i, text: `Q${i + 1}?`, intent: "best", stage: "discover", answers: [answer("GEMINI", true), answer("CLAUDE", false), answer("OPENAI", null, { failed: true })] }));
   const report = { report: { slug: "abcdefgh1234", simulated: false, overallScore: 68, enginesSkipped: [], questions } };
   const { client } = await connect({}, () => Response.json(report));
   const summary = text(await client.callTool({ name: "recomention_report_get", arguments: { slug: "abcdefgh1234" } }));
@@ -130,14 +131,56 @@ test("a report fits the agent's context: per-question counts by default, one que
   assert.match(summary, /"1 of 2 usable answers"/);
   assert.doesNotMatch(summary, /word word/);
   const one = JSON.parse(text(await client.callTool({ name: "recomention_report_get", arguments: { slug: "abcdefgh1234", question: 2 } })));
-  assert.equal(one.report.question.order, 2);
+  assert.equal(one.report.question.question, 2);
+  assert.equal(one.report.question.text, "Q2?", "question 2 is the second question");
   assert.equal(one.report.question.answers.length, 3);
 });
 
-test("report_get accepts question 0, the first question's order in real reports", async () => {
-  const report = { report: { slug: "abcdefgh1234", questions: [0, 1].map((order) => ({ order, text: `Q${order}`, answers: [] })) } };
-  const { client } = await connect({}, () => Response.json(report));
-  const first = await client.callTool({ name: "recomention_report_get", arguments: { slug: "abcdefgh1234", question: 0 } });
+// Users say "question 2" for the second question, so the tools number from 1. Fixtures store order from 0, as real reports do.
+const threeQuestions = { report: { slug: "abcdefgh1234", questions: [0, 1, 2].map((order) => ({ order, text: `Question ${order + 1}`, answers: [] })) } };
+const get = async (args: Record<string, unknown>) => {
+  const { client } = await connect({}, () => Response.json(threeQuestions));
+  return client.callTool({ name: "recomention_report_get", arguments: { slug: "abcdefgh1234", ...args } });
+};
+
+test("report_get numbers questions from 1 in its summary, never by the stored 0-based order", async () => {
+  const summary = JSON.parse(text(await get({}))).report;
+  assert.deepEqual(summary.questions.map((q: { question: number; text: string }) => [q.question, q.text]), [[1, "Question 1"], [2, "Question 2"], [3, "Question 3"]]);
+  for (const q of summary.questions) assert.equal("order" in q, false, "the 0-based order is not shown");
+  assert.match(summary.answersOmitted, /question set to a question's number \(1 is the first\)/);
+});
+
+test("report_get question 1 is the first question and the question count is the last", async () => {
+  const first = await get({ question: 1 });
   assert.equal(first.isError, undefined, text(first));
-  assert.equal(JSON.parse(text(first)).report.question.order, 0);
+  assert.deepEqual(JSON.parse(text(first)).report.question, { question: 1, text: "Question 1", answers: [] });
+  const last = await get({ question: 3 });
+  assert.equal(last.isError, undefined, text(last));
+  assert.equal(JSON.parse(text(last)).report.question.text, "Question 3");
+  assert.equal(JSON.parse(text(last)).report.numbering, undefined);
+});
+
+test("report_get still reads the deprecated question 0 as the first question, and says so", async () => {
+  const zero = await get({ question: 0 });
+  assert.equal(zero.isError, undefined, text(zero));
+  const body = JSON.parse(text(zero)).report;
+  assert.deepEqual(body.question, JSON.parse(text(await get({ question: 1 }))).report.question, "0 and 1 both name the first question");
+  assert.match(body.numbering, /deprecated/);
+});
+
+test("report_get for a question the report does not have is a tool error", async () => {
+  const missing = await get({ question: 4 });
+  assert.equal(missing.isError, true, text(missing));
+  assert.match(text(missing), /No question 4; questions are numbered 1 to 3\./);
+});
+
+test("report_get's description and schema say the question number is 1-based and 0 is deprecated", async () => {
+  const { client } = await connect({}, () => Response.json({}));
+  const tool = (await client.listTools()).tools.find((t) => t.name === "recomention_report_get")!;
+  assert.match(tool.description!, /1-based/);
+  assert.doesNotMatch(tool.description!, /from 0/);
+  const schema = (tool.inputSchema.properties as Record<string, { description?: string; minimum?: number }>).question!;
+  assert.match(schema.description!, /1-based/);
+  assert.match(schema.description!, /0 is deprecated/);
+  assert.equal(schema.minimum, 0, "0 stays accepted during the transition");
 });

@@ -77,7 +77,7 @@ env = { RECOMENTION_API_KEY = "<key>", RECOMENTION_BASE_URL = "https://api.recom
 | `recomention_suggest_prompts({domain, category, description})` | free | Buyer questions from fixed templates. No model call. Never names the product. |
 | `recomention_report_start({domain, description, category, plan, prompts?, engines?, funding})` | **spends** | `funding: "credits"` uses one agency credit (plan `FULL`); `funding: "byok"` runs on your provider keys and needs an active Agent plan; a refusal names the plan limit it hit. |
 | `recomention_report_status(slug)` | free | PENDING / RUNNING / COMPLETE / FAILED, with progress. |
-| `recomention_report_get(slug)` | free | The full report JSON. |
+| `recomention_report_get(slug, question?)` | free | The report without answer texts, with per-question counts numbered from 1. Pass `question` (1-based: 1 is the first) for that question's answers and citations. `0` is deprecated and also means the first. |
 | `recomention_distribution_kit(slug)` | free | Markdown files built from a finished report: product, competitors, AI visibility, where to get mentioned, channel plan. |
 | `recomention_reports_list` | free | Your reports, newest first. |
 

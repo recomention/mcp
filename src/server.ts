@@ -33,6 +33,10 @@ async function run(fn: () => Promise<unknown>): Promise<ToolResult> {
 }
 
 const slug = z.string().min(1).max(100).describe("The slug from a previous call.");
+/** Kept in step with core's application/hosted-mcp.ts; this package ships without core. */
+const QUESTION_NUMBER =
+  "1-based question number, as the summary shows it: 1 is the first question, n the n-th. " +
+  "0 is deprecated and also reads as the first question (older agents counted from 0), so 0 and 1 return the same question.";
 
 /**
  * The recomention tools. Read tools are free. `recomention_report_start` is the
@@ -131,9 +135,9 @@ export function createServer(api: Api, env: Record<string, string | undefined> =
       title: "Get a report",
       description:
         "A report as JSON: the overall score, each engine's runs mentioned of runs total, competitors named instead, cited sources, the fix list and, per question, how many usable answers named the product. " +
-        "Answer texts are left out to fit your context: pass question (its order, from 0) to read that question's answers and citations. " +
+        "Answer texts are left out to fit your context: pass question (1-based: 1 is the first question, the number each summary entry shows) to read that question's answers and citations. " +
         "Engines in enginesSkipped did not run; never describe them as not mentioning the product. simulated: true means test data. Free.",
-      inputSchema: { slug, question: z.number().int().min(0).max(200).optional().describe("A question's order number, to read its answers.") },
+      inputSchema: { slug, question: z.number().int().min(0).max(200).optional().describe(QUESTION_NUMBER) },
       annotations: { readOnlyHint: true, openWorldHint: true },
     },
     ({ slug, question }) => run(async () => compactReport((await api.report(slug)) as never, question)),
