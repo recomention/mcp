@@ -4,6 +4,7 @@ import { z } from "zod";
 import { ApiError, PROVIDERS, providerKeysFromEnv, type Api } from "./api.js";
 import { suggestPrompts } from "./suggest.js";
 import { compactReport } from "./report.js";
+import { compactRanking } from "./ranking.js";
 
 export const SERVER_NAME = "recomention";
 /**
@@ -37,6 +38,9 @@ const slug = z.string().min(1).max(100).describe("The slug from a previous call.
 const QUESTION_NUMBER =
   "1-based question number, as the summary shows it: 1 is the first question, n the n-th. " +
   "0 is deprecated and also reads as the first question (older agents counted from 0), so 0 and 1 return the same question.";
+/** Kept in step with core's application/hosted-mcp.ts. Rankings are a newer tool: no deprecated 0. */
+const RANKING_QUESTION_NUMBER = "1-based question number, as the summary shows it: 1 is the first question, n the n-th.";
+const RANKING_ENGINE = "With question: only this engine's answers to it.";
 
 /**
  * The recomention tools. Read tools are free. `recomention_report_start` is the
@@ -61,11 +65,14 @@ export function createServer(api: Api, env: Record<string, string | undefined> =
     "recomention_rankings_get",
     {
       title: "Get an AI ranking",
-      description: "One public AI ranking by slug: every product named, how many answers named it (as n of m), and the verbatim answers. Free.",
-      inputSchema: { slug },
+      description:
+        "One public AI ranking by slug: its questions with each engine's usable answers, and the most-named products as \"named in n of m usable answers\", overall and by engine. " +
+        "Answer texts are left out to fit your context: pass question (1-based: 1 is the first question, the number each summary entry shows) to read that question's answers, the products they named and their citations, and engine with it for one engine's answers only. " +
+        "Failed and not-run calls are counted apart, never as answers that named nobody. Free.",
+      inputSchema: { slug, question: z.number().int().min(1).max(200).optional().describe(RANKING_QUESTION_NUMBER), engine: z.enum(PROVIDERS).optional().describe(RANKING_ENGINE) },
       annotations: { readOnlyHint: true, openWorldHint: true },
     },
-    ({ slug }) => run(() => api.ranking(slug)),
+    ({ slug, question, engine }) => run(async () => compactRanking((await api.ranking(slug)) as never, question, engine)),
   );
 
   server.registerTool(

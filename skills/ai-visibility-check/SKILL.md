@@ -15,7 +15,7 @@ user's own provider keys), so this skill always asks before it starts one.
    repository's README or landing page if the user is working in the product's own repo, and confirm.
 2. **Look for free evidence first.** Call `recomention_rankings_list`. If a public ranking matches the
    category, call `recomention_rankings_get` and tell the user where the product appears (as "named in
-   n of m answers"), or that it is absent. This costs nothing.
+   n of m answers", from `products` or `otherProducts`), or that it is absent from both. This costs nothing.
 3. **Draft the questions.** Call `recomention_suggest_prompts` and show the list. Let the user edit,
    add or remove questions. None may contain the product's name — a question that names it measures
    nothing. Remove any that do and say why.

@@ -73,7 +73,7 @@ env = { RECOMENTION_API_KEY = "<key>", RECOMENTION_BASE_URL = "https://api.recom
 | Tool | Cost | |
 | --- | --- | --- |
 | `recomention_rankings_list` | free | Public AI rankings. No key needed. |
-| `recomention_rankings_get(slug)` | free | One ranking with every answer it counted. |
+| `recomention_rankings_get(slug, question?, engine?)` | free | One ranking without answer texts: its questions numbered from 1 with each engine's usable answers, and every product named, as "named in n of m usable answers". Pass `question` (1-based) for that question's answers and citations, and `engine` with it for one engine's answers. |
 | `recomention_suggest_prompts({domain, category, description})` | free | Buyer questions from fixed templates. No model call. Never names the product. |
 | `recomention_report_start({domain, description, category, plan, prompts?, engines?, funding})` | **spends** | `funding: "credits"` uses one agency credit (plan `FULL`); `funding: "byok"` runs on your provider keys and needs an active Agent plan; a refusal names the plan limit it hit. |
 | `recomention_report_status(slug)` | free | PENDING / RUNNING / COMPLETE / FAILED, with progress. |

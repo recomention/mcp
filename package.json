@@ -1,6 +1,6 @@
 {
   "name": "@recomention/mcp",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "MCP server for recomention: ask whether AI engines recommend a product, from Claude Code, Cursor or Codex.",
   "type": "module",
   "license": "MIT",

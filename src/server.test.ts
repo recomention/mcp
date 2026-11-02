@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { existsSync, readFileSync } from "node:fs";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { apiV1Root, createApi, DEFAULT_BASE_URL } from "./api.js";
@@ -183,4 +184,81 @@ test("report_get's description and schema say the question number is 1-based and
   assert.match(schema.description!, /1-based/);
   assert.match(schema.description!, /0 is deprecated/);
   assert.equal(schema.minimum, 0, "0 stays accepted during the transition");
+});
+
+// A ranking shaped like the public API's: answers carry the 1-based prompt they answer; only answered runs are listed.
+const rankingAnswer = (prompt: number, engine: string, run: number) => ({
+  prompt, engine, run, text: "word ".repeat(2000), brands: [{ name: "Alpha" }], sources: [{ url: `https://example.com/${prompt}/${engine}/${run}` }],
+});
+const syntheticRanking = {
+  ranking: {
+    slug: "crm", category: "CRM", month: "2026-10", engines: ["OPENAI", "GEMINI"], runsPerPrompt: 3, url: "https://site.test/ai-rankings/crm",
+    prompts: [1, 2, 3].map((i) => ({ text: `Question ${i}?`, coverage: [{ engine: "OPENAI", answered: 3, failed: 0, notRun: 0 }, { engine: "GEMINI", answered: 2, failed: 1, notRun: 0 }] })),
+    answers: [1, 2, 3].flatMap((p) => [rankingAnswer(p, "OPENAI", 1), rankingAnswer(p, "OPENAI", 2), rankingAnswer(p, "OPENAI", 3), rankingAnswer(p, "GEMINI", 1), rankingAnswer(p, "GEMINI", 2)]),
+    brands: Array.from({ length: 50 }, (_, i) => ({ name: i ? `Brand ${i}` : "Alpha", mentions: i ? 1 : 15, avgPosition: 1, byEngine: i ? { OPENAI: 1 } : { OPENAI: 9, GEMINI: 6 } })),
+  },
+};
+const rankingsGet = async (args: Record<string, unknown>, ranking: unknown = syntheticRanking) => {
+  const { client } = await connect({}, () => Response.json(ranking));
+  return client.callTool({ name: "recomention_rankings_get", arguments: { slug: "crm", ...args } });
+};
+
+test("rankings_get fits the agent's context: per-question counts by default, no answer texts", async () => {
+  const result = await rankingsGet({});
+  assert.equal(result.isError, undefined, text(result));
+  assert.ok(text(result).length < 25_000, `rankings_get returned ${text(result).length} chars`);
+  assert.doesNotMatch(text(result), /word word/);
+  const body = JSON.parse(text(result)).ranking;
+  assert.deepEqual(body.questions.map((q: { question: number; text: string }) => [q.question, q.text]), [[1, "Question 1?"], [2, "Question 2?"], [3, "Question 3?"]]);
+  // A failed call is counted apart, never as an answer that named nobody.
+  assert.equal(body.usableAnswers, 15);
+  assert.deepEqual(body.questions[0].engines.GEMINI, { answered: 2, failed: 1, notRun: 0 });
+  assert.equal(body.products[0].named, "15 of 15 usable answers");
+  assert.deepEqual(body.products[0].byEngine, { OPENAI: "9 of 9", GEMINI: "6 of 6" });
+  assert.equal(body.products.length + body.otherProducts.length, 50);
+  assert.match(body.answersOmitted, /question set to a question's number \(1 is the first\)/);
+});
+
+test("rankings_get question n returns the n-th prompt's answers; engine narrows them", async () => {
+  const one = JSON.parse(text(await rankingsGet({ question: 2 }))).ranking.question;
+  assert.equal(one.question, 2);
+  assert.equal(one.text, "Question 2?");
+  assert.equal(one.answers.length, 5);
+  const gemini = JSON.parse(text(await rankingsGet({ question: 2, engine: "GEMINI" }))).ranking.question;
+  assert.deepEqual(gemini.answers.map((a: { engine: string }) => a.engine), ["GEMINI", "GEMINI"]);
+  assert.deepEqual(gemini.coverage, [{ engine: "GEMINI", answered: 2, failed: 1, notRun: 0 }]);
+});
+
+test("rankings_get for a question the ranking does not have is a tool error", async () => {
+  const missing = await rankingsGet({ question: 4 });
+  assert.equal(missing.isError, true, text(missing));
+  assert.match(text(missing), /No question 4; questions are numbered 1 to 3\./);
+  assert.equal((await rankingsGet({ question: 0 })).isError, true, "rankings number from 1, with no deprecated 0");
+  assert.equal((await rankingsGet({ engine: "GEMINI" })).isError, true, "engine needs a question");
+});
+
+test("rankings_get's description and schema describe 1-based questions and an optional engine", async () => {
+  const { client } = await connect({}, () => Response.json({}));
+  const tool = (await client.listTools()).tools.find((t) => t.name === "recomention_rankings_get")!;
+  assert.match(tool.description!, /1-based/);
+  const props = tool.inputSchema.properties as Record<string, { description?: string; minimum?: number; enum?: string[] }>;
+  assert.equal(props.question!.minimum, 1);
+  assert.ok(props.engine!.enum!.includes("AI_OVERVIEW"));
+  assert.deepEqual(tool.inputSchema.required, ["slug"]);
+});
+
+// The largest committed ranking, when this runs inside the monorepo (the public mirror ships without it).
+const LARGEST = new URL("../../web/src/data/rankings/ai-visibility-tools/2026-10.json", import.meta.url);
+test("rankings_get fits the agent's context for the largest real ranking", { skip: !existsSync(LARGEST) && "the rankings data is not in this checkout" }, async () => {
+  const ranking = JSON.parse(readFileSync(LARGEST, "utf8")) as { prompts: unknown[] };
+  const full = { ranking: { ...ranking, url: "https://www.recomention.com/ai-rankings/ai-visibility-tools" } };
+  assert.ok(JSON.stringify(full).length > 250_000);
+  const summary = await rankingsGet({}, full);
+  assert.equal(summary.isError, undefined, text(summary));
+  assert.ok(text(summary).length < 25_000, `rankings_get returned ${text(summary).length} chars`);
+  for (let n = 1; n <= ranking.prompts.length; n++) {
+    const one = await rankingsGet({ question: n, engine: "OPENAI" }, full);
+    assert.equal(one.isError, undefined, text(one));
+    assert.ok(text(one).length < 25_000, `question ${n}, one engine: ${text(one).length} chars`);
+  }
 });
